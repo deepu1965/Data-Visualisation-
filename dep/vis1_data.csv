@@ -1,0 +1,21 @@
+breed,entries,attendees,category,day
+Border Collie,365,288,Pastoral,1
+Shetland Sheepdog,268,232,Pastoral,1
+Collie (Rough),257,215,Pastoral,1
+Bearded Collie,242,210,Pastoral,1
+Newfoundland,202,176,Working,1
+Whippet,466,395,Hound,2
+Staffordshire Bull Terrier,403,364,Terrier,2
+Rhodesian Ridgeback,283,251,Hound,2
+Border Terrier,275,244,Terrier,2
+Dachshund Miniature Smooth Haired,234,199,Hound,2
+Cavalier King Charles Spaniel,320,278,Toy,3
+Dalmatian,251,223,Utility,3
+French Bulldog,222,202,Utility,3
+Bulldog,197,193,Utility,3
+Pug,217,188,Toy,3
+Retriever (Golden),653,538,Gundog,4
+Retriever (Labrador),623,519,Gundog,4
+Spaniel (Cocker),476,421,Gundog,4
+Retriever (Flatcoated),426,349,Gundog,4
+Irish Setter,299,262,Gundog,4

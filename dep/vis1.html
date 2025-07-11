@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <style>
+      .chart-container {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      .charts {
+        display: flex;
+        gap: 40px;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        padding: 20px;
+      }
+
+      .pie-container,
+      .bar-container {
+        flex: 1;
+        min-width: 380px;
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 20px;
+        margin-top: 20px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        background: white;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      .legend-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+      }
+
+      .tooltip {
+        position: absolute;
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.98);
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        pointer-events: none;
+        font-size: 14px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      .bar-title {
+        font-size: 1.2em;
+        font-weight: 600;
+        margin-bottom: 20px;
+        text-align: center;
+        opacity: 0;
+        transition: opacity 0.6s;
+        color: #2d3748;
+      }
+
+      .bar-chart {
+        opacity: 0;
+        transition: opacity 0.6s;
+      }
+
+      .breed-label {
+        font-size: 13px;
+        font-weight: 500;
+        fill: #4a5568;
+      }
+
+      h2 {
+        color: #2d3748;
+        text-align: center;
+        margin-bottom: 30px;
+        font-size: 24px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="chart-container">
+      <h2>Dog Show Participation Statistics</h2>
+      <div class="charts">
+        <div class="pie-container"></div>
+        <div class="bar-container">
+          <div class="bar-title"></div>
+          <div id="bar-chart" class="bar-chart"></div>
+        </div>
+      </div>
+      <div id="legend" class="legend"></div>
+    </div>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script>
+      // Global variables to store data
+      let breedData = [];
+      let dayData = [];
+
+      // Loading state management
+      function showLoading() {
+        document.querySelector('.chart-container').innerHTML = `
+        <div style="display: flex; justify-content: center; align-items: center; height: 400px;">
+          <div style="text-align: center;">
+            <div style="border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+            <p style="margin-top: 20px; color: #666;">Loading visualization...</p>
+          </div>
+        </div>
+        <style>
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        </style>
+      `;
+      }
+
+      function hideLoading() {
+        document.querySelector('.chart-container').innerHTML = `
+        <h2>Dog Show Participation Statistics</h2>
+        <div class="charts">
+          <div class="pie-container"></div>
+          <div class="bar-container">
+            <div class="bar-title"></div>
+            <div id="bar-chart" class="bar-chart"></div>
+          </div>
+        </div>
+        <div id="legend" class="legend"></div>
+      `;
+      }
+
+      // Load and process data
+      async function loadData() {
+        try {
+          showLoading();
+          const data = await d3.csv("vis1_data.csv");
+
+          // Process breed data
+          breedData = data.map(d => ({
+            breed: d.breed,
+            entries: +d.entries,
+            attendees: +d.attendees,
+            category: d.category,
+            day: +d.day
+          }));
+
+          // Calculate day summary data from breed data
+          const dayGroups = {
+            1: { name: "Pastoral & Working", day: 1, attendance: 0 },
+            2: { name: "Hound and Terrier", day: 2, attendance: 0 },
+            3: { name: "Toy and Utility", day: 3, attendance: 0 },
+            4: { name: "Gundog", day: 4, attendance: 0 }
+          };
+
+          breedData.forEach(d => {
+            dayGroups[d.day].attendance += d.attendees;
+          });
+
+          dayData = Object.values(dayGroups);
+
+          hideLoading();
+          initializeVisualization();
+        } catch (error) {
+          console.error("Error loading data:", error);
+          document.querySelector('.chart-container').innerHTML = `
+          <div style="text-align: center; color: #e74c3c; padding: 50px;">
+            <h3>Error Loading Data</h3>
+            <p>Please check if the data file exists and is properly formatted.</p>
+          </div>
+        `;
+        }
+      }
+
+      // Initialize visualization after data is loaded
+      function initializeVisualization() {
+        // Calculate total attendance
+        const totalAttendance = dayData.reduce((sum, d) => sum + d.attendance, 0);
+
+        // Add percentage to dayData
+        dayData.forEach(d => {
+          d.percentage = ((d.attendance / totalAttendance) * 100).toFixed(1);
+        });
+
+        // Colors
+        const colors = ["#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4"];
+        const breedColors = [
+          "#FF9F1C", // Orange
+          "#2EC4B6", // Teal
+          "#E71D36", // Red
+          "#011627", // Dark Blue
+          "#7209B7"  // Purple
+        ];
+
+        // Pie Chart dimensions
+        const width = 380;
+        const height = 380;
+        const radius = Math.min(width, height) / 2;
+
+        // Create pie chart SVG
+        const svg = d3.select(".pie-container")
+          .append("svg")
+          .attr("width", width)
+          .attr("height", height)
+          .append("g")
+          .attr("transform", `translate(${width / 2}, ${height / 2})`);
+
+        // Pie and arc generators
+        const pie = d3.pie()
+          .value(d => d.attendance)
+          .sort(null);
+
+        const arc = d3.arc()
+          .innerRadius(0)
+          .outerRadius(radius);
+
+        // Create pie segments
+        const arcs = svg.selectAll("arc")
+          .data(pie(dayData))
+          .enter()
+          .append("g");
+
+        // Add paths for pie segments
+        arcs.append("path")
+          .attr("d", arc)
+          .attr("fill", (d, i) => colors[i])
+          .attr("stroke", "white")
+          .attr("stroke-width", "2")
+          .style("transition", "opacity 1s")
+          .on("mouseover", function (event, d) {
+            d3.select(this).style("opacity", 0.8);
+            updateBarChart(d.data.day);
+          })
+          .on("mouseout", function () {
+            d3.select(this).style("opacity", 1);
+          });
+
+        // Add percentage labels
+        arcs.append("text")
+          .attr("transform", d => `translate(${arc.centroid(d)})`)
+          .attr("text-anchor", "middle")
+          .attr("fill", "white")
+          .attr("font-size", "14px")
+          .attr("font-weight", "bold")
+          .text(d => `${d.data.percentage}%`);
+
+        // Create legend
+        const legend = d3.select("#legend");
+
+        legend.selectAll("div")
+          .data(dayData)
+          .enter()
+          .append("div")
+          .attr("class", "legend-item")
+          .html((d, i) => `
+          <div class="legend-color" style="background-color: ${colors[i]}"></div>
+          <div>${d.name}</div>
+        `);
+
+        // Bar Chart dimensions
+        const barWidth = 380;
+        const barHeight = 250;
+        const margin = { top: 20, right: 60, bottom: 60, left: 160 };
+
+        // Create bar chart SVG
+        const barSvg = d3.select("#bar-chart")
+          .append("svg")
+          .attr("width", barWidth + margin.left + margin.right)
+          .attr("height", barHeight + margin.top + margin.bottom)
+          .append("g")
+          .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        // Start with first day's data
+        updateBarChart(1);
+      }
+
+      // Load data when page loads
+      document.addEventListener("DOMContentLoaded", loadData);
+
+      // Update bar chart function
+      function updateBarChart(day) {
+        // Filter and sort data for the selected day
+        const dayBreeds = breedData
+          .filter(d => d.day === day)
+          .sort((a, b) => b.attendees - a.attendees)
+          .slice(0, 5);
+
+        // Update title
+        d3.select(".bar-title")
+          .style("opacity", 1)
+          .text(`Top 5 Breeds - Day ${day}`);
+
+        // Show bar chart
+        d3.select(".bar-chart")
+          .style("opacity", 1);
+
+        // Clear previous content
+        const barSvg = d3.select("#bar-chart").select("svg").select("g");
+        barSvg.selectAll("*").remove();
+
+        // Create scales
+        const y = d3.scaleBand()
+          .domain(dayBreeds.map(d => d.breed))
+          .range([0, 250])
+          .padding(0.1);
+
+        const x = d3.scaleLinear()
+          .domain([0, d3.max(dayBreeds, d => d.attendees)])
+          .range([0, 380]);
+
+        // Add grid lines
+        barSvg.selectAll("grid-line")
+          .data(x.ticks(5))
+          .enter()
+          .append("line")
+          .attr("x1", d => x(d))
+          .attr("x2", d => x(d))
+          .attr("y1", 0)
+          .attr("y2", 250)
+          .style("stroke", "#e2e8f0")
+          .style("stroke-width", 1)
+          .style("stroke-dasharray", "2,2");
+
+        // Add bars
+        const breedColors = ["#FF9F1C", "#2EC4B6", "#E71D36", "#011627", "#7209B7"];
+
+        barSvg.selectAll("rect")
+          .data(dayBreeds)
+          .enter()
+          .append("rect")
+          .attr("y", d => y(d.breed))
+          .attr("height", y.bandwidth())
+          .attr("x", 0)
+          .attr("width", 0)
+          .attr("fill", (d, i) => breedColors[i])
+          .style("rx", 4)
+          .style("ry", 4)
+          .style("opacity", 0.9)
+          .on("mouseover", function () {
+            d3.select(this)
+              .style("opacity", 1)
+              .style("cursor", "pointer");
+          })
+          .on("mouseout", function () {
+            d3.select(this)
+              .style("opacity", 0.9);
+          })
+          .transition()
+          .duration(500)
+          .attr("width", d => x(d.attendees));
+
+        // Add breed labels
+        barSvg.selectAll(".breed-label")
+          .data(dayBreeds)
+          .enter()
+          .append("text")
+          .attr("class", "breed-label")
+          .attr("y", d => y(d.breed) + y.bandwidth() / 2)
+          .attr("x", -10)
+          .attr("text-anchor", "end")
+          .attr("alignment-baseline", "middle")
+          .text(d => d.breed);
+
+        // Add attendance values
+        barSvg.selectAll(".attendance-label")
+          .data(dayBreeds)
+          .enter()
+          .append("text")
+          .attr("class", "attendance-label")
+          .attr("y", d => y(d.breed) + y.bandwidth() / 2)
+          .attr("x", d => x(d.attendees) + 5)
+          .attr("alignment-baseline", "middle")
+          .text(d => d.attendees)
+          .style("font-size", "12px")
+          .style("fill", "#666");
+
+        // Add x-axis
+        barSvg.append("g")
+          .attr("transform", `translate(0,250)`)
+          .call(d3.axisBottom(x))
+          .selectAll("text")
+          .style("text-anchor", "middle");
+
+        // Style axes
+        barSvg.selectAll(".domain")
+          .style("stroke", "#cbd5e0");
+
+        barSvg.selectAll(".tick line")
+          .style("stroke", "#e2e8f0");
+
+        barSvg.selectAll(".tick text")
+          .style("fill", "#4a5568")
+          .style("font-size", "12px");
+
+        // Add x-axis label
+        barSvg.append("text")
+          .attr("text-anchor", "middle")
+          .attr("x", 190)
+          .attr("y", 290)
+          .text("Number of Attendees")
+          .style("font-size", "12px")
+          .style("fill", "#4a5568");
+      }
+    </script>
+  </body>
+
+</html>

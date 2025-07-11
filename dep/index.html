@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Visualization Showcase</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://d3js.org/d3.v7.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+        <script>
+            // Theme management
+            function toggleTheme() {
+                const html = document.documentElement;
+                html.classList.toggle("dark");
+                const isDark = html.classList.contains("dark");
+                localStorage.setItem("theme", isDark ? "dark" : "light");
+
+                // Update button text
+                const button = document.querySelector('[onclick="toggleTheme()"]');
+                button.innerHTML = isDark ? '<span class="mr-2">☀️</span> Light Mode' : '<span class="mr-2">🌙</span> Dark Mode';
+            }
+
+            // Visualization management with loading states
+            function showViz(vizId) {
+                // Hide all visualizations
+                document.querySelectorAll('.visualization').forEach(viz => {
+                    viz.classList.remove('active');
+                    viz.classList.add('hidden');
+                });
+
+                const targetViz = document.getElementById(vizId);
+                const iframe = targetViz.querySelector("iframe");
+
+                // Show loading state
+                showLoadingState(targetViz);
+
+                // Reload iframe to restart animations
+                iframe.src = iframe.src;
+
+                // Show visualization after brief delay
+                setTimeout(() => {
+                    hideLoadingState(targetViz);
+                    targetViz.classList.remove('hidden');
+                    setTimeout(() => targetViz.classList.add('active'), 10);
+                }, 1000);
+            }
+
+            function showLoadingState(vizElement) {
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = 'loading-overlay';
+                loadingDiv.innerHTML = `
+                <div class="loading-content">
+                    <div class="spinner"></div>
+                    <p>Loading visualization...</p>
+                </div>
+            `;
+                vizElement.appendChild(loadingDiv);
+            }
+
+            function hideLoadingState(vizElement) {
+                const loadingOverlay = vizElement.querySelector('.loading-overlay');
+                if (loadingOverlay) {
+                    loadingOverlay.remove();
+                }
+            }
+
+            // Enhanced Viz2 toggle function
+            function toggleViz2() {
+                const viz2a = document.getElementById('viz2a');
+                const viz2b = document.getElementById('viz2b');
+                const toggleBtn = document.querySelector('[onclick="toggleViz2()"]');
+
+                if (viz2a.classList.contains('hidden')) {
+                    viz2a.classList.remove('hidden');
+                    viz2b.classList.add('hidden');
+                    viz2a.src = viz2a.src; // Reload iframe
+                    toggleBtn.textContent = 'Switch to Bar Chart';
+                } else {
+                    viz2a.classList.add('hidden');
+                    viz2b.classList.remove('hidden');
+                    viz2b.src = viz2b.src; // Reload iframe
+                    toggleBtn.textContent = 'Switch to Sunburst';
+                }
+            }
+
+            // Enhanced initialization
+            document.addEventListener("DOMContentLoaded", () => {
+                // Initialize theme
+                const savedTheme = localStorage.getItem("theme");
+                if (savedTheme) {
+                    document.documentElement.classList.add(savedTheme);
+                    const button = document.querySelector('[onclick="toggleTheme()"]');
+                    button.innerHTML = savedTheme === "dark" ? '<span class="mr-2">☀️</span> Light Mode' : '<span class="mr-2">🌙</span> Dark Mode';
+                }
+
+                // Show default visualization
+                showViz('viz3');
+
+                // Add keyboard navigation
+                document.addEventListener('keydown', (e) => {
+                    if (e.key >= '1' && e.key <= '3') {
+                        showViz(`viz${e.key}`);
+                    }
+                });
+
+                // Add accessibility improvements
+                addAccessibilityFeatures();
+            });
+
+            function addAccessibilityFeatures() {
+                // Add ARIA labels
+                const navButtons = document.querySelectorAll('nav button');
+                navButtons.forEach((btn, index) => {
+                    if (index < 3) {
+                        btn.setAttribute('aria-label', `Show visualization ${index + 1}`);
+                    } else {
+                        btn.setAttribute('aria-label', 'Toggle dark/light mode');
+                    }
+                });
+
+                // Add focus management
+                const visualizations = document.querySelectorAll('.visualization');
+                visualizations.forEach(viz => {
+                    viz.setAttribute('tabindex', '-1');
+                    viz.setAttribute('role', 'region');
+                    viz.setAttribute('aria-live', 'polite');
+                });
+            }
+        </script>
+        <style>
+            .light {
+                --bg-color: #f3f4f6;
+                --text-color: #111827;
+                --card-bg: #ffffff;
+                --nav-bg: #2563eb;
+            }
+
+            .dark {
+                --bg-color: #1f2937;
+                --text-color: #f9fafb;
+                --card-bg: #374151;
+                --nav-bg: #1e40af;
+            }
+
+            .visualization {
+                opacity: 0;
+                transition: opacity 0.5s ease-in-out;
+            }
+
+            .visualization.active {
+                opacity: 1;
+            }
+
+            .loading-overlay {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(255, 255, 255, 0.9);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 1.5rem;
+                z-index: 10;
+            }
+
+            .dark .loading-overlay {
+                background: rgba(55, 65, 81, 0.9);
+            }
+
+            .loading-content {
+                text-align: center;
+                color: var(--text-color);
+            }
+
+            .spinner {
+                border: 4px solid #f3f3f3;
+                border-top: 4px solid #3498db;
+                border-radius: 50%;
+                width: 40px;
+                height: 40px;
+                animation: spin 1s linear infinite;
+                margin: 0 auto 20px;
+            }
+
+            @keyframes spin {
+                0% {
+                    transform: rotate(0deg);
+                }
+
+                100% {
+                    transform: rotate(360deg);
+                }
+            }
+
+            /* Enhanced responsive design */
+            @media (max-width: 768px) {
+                .container {
+                    padding: 1rem;
+                }
+
+                nav {
+                    flex-direction: column;
+                    gap: 1rem;
+                }
+
+                nav .flex {
+                    flex-wrap: wrap;
+                    justify-content: center;
+                }
+
+                .visualization {
+                    height: 70vh !important;
+                }
+            }
+
+            /* Improved button styles */
+            nav button {
+                transition: all 0.3s ease;
+                position: relative;
+                overflow: hidden;
+            }
+
+            nav button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            }
+
+            nav button:focus {
+                outline: 2px solid #fbbf24;
+                outline-offset: 2px;
+            }
+
+            /* Enhanced card styling */
+            .visualization {
+                background: var(--card-bg);
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            .dark .visualization {
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            }
+        </style>
+    </head>
+
+    <body class="bg-[var(--bg-color)] text-[var(--text-color)] flex flex-col min-h-screen">
+
+        <!-- Navbar -->
+        <nav class="bg-[var(--nav-bg)] text-white p-4 flex justify-between items-center shadow-md rounded-b-2xl">
+            <h1 class="text-2xl font-bold">Visualization Showcase</h1>
+            <div class="flex items-center gap-4">
+                <button onclick="showViz('viz1')"
+                    class="bg-white text-blue-600 px-4 py-2 rounded-lg shadow-md hover:bg-gray-200 transition"
+                    aria-label="Show visualization 1">
+                    Viz 1
+                </button>
+                <button onclick="showViz('viz2')"
+                    class="bg-white text-blue-600 px-4 py-2 rounded-lg shadow-md hover:bg-gray-200 transition"
+                    aria-label="Show visualization 2">
+                    Viz 2
+                </button>
+                <button onclick="showViz('viz3')"
+                    class="bg-white text-blue-600 px-4 py-2 rounded-lg shadow-md hover:bg-gray-200 transition"
+                    aria-label="Show visualization 3">
+                    Viz 3
+                </button>
+                <button onclick="toggleTheme()"
+                    class="bg-gray-800 text-white px-4 py-2 rounded-full hover:bg-gray-700 transition flex items-center"
+                    aria-label="Toggle theme">
+                    <span class="mr-2">🌙</span> Dark Mode
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Container -->
+        <div class="container mx-auto p-6 flex-grow flex items-center justify-center">
+
+            <!-- Visualization 1 -->
+            <section id="viz1"
+                class="visualization bg-[var(--card-bg)] p-6 rounded-3xl shadow-lg hidden w-full h-[85vh] flex items-center justify-center relative">
+                <iframe src="vis1.html" class="w-full h-full border-0 rounded-3xl" allow="fullscreen; autoplay"
+                    title="Dog Show Participation Statistics"></iframe>
+            </section>
+
+            <!-- Visualization 2 with Toggle Button -->
+            <section id="viz2"
+                class="visualization bg-[var(--card-bg)] p-6 rounded-3xl shadow-lg hidden w-full h-[85vh] flex flex-col items-center justify-center relative">
+                <div class="mb-4 flex gap-4 items-center">
+                    <button onclick="toggleViz2()"
+                        class="bg-blue-500 text-white px-6 py-3 rounded-lg shadow-md hover:bg-blue-700 transition transform hover:scale-105">
+                        Switch to Bar Chart
+                    </button>
+                    <span class="text-sm text-gray-600">Toggle between Sunburst and Bar Chart views</span>
+                </div>
+                <iframe id="viz2a" src="vis2a.html" class="w-full h-full border-0 rounded-3xl"
+                    allow="fullscreen; autoplay" title="Sunburst Visualization"></iframe>
+                <iframe id="viz2b" src="vis2b.html" class="w-full h-full border-0 rounded-3xl hidden"
+                    allow="fullscreen; autoplay" title="Bar Chart Visualization"></iframe>
+            </section>
+
+            <!-- Visualization 3 -->
+            <section id="viz3"
+                class="visualization bg-[var(--card-bg)] p-6 rounded-3xl shadow-lg hidden w-full h-[85vh] flex items-center justify-center relative">
+                <iframe src="vis3.html" class="w-full h-full border-0 rounded-3xl" allow="fullscreen; autoplay"
+                    title="Crufts Event History with London Map"></iframe>
+            </section>
+        </div>
+
+        <!-- Footer -->
+        <footer class="bg-[var(--nav-bg)] text-white text-center p-4 mt-auto rounded-t-2xl">
+            <p>&copy; 2025 Visualization Showcase | Built with D3.js v7 & Tailwind CSS</p>
+            <p class="text-sm mt-2">Press 1, 2, or 3 to navigate between visualizations</p>
+        </footer>
+
+    </body>
+
+</html>

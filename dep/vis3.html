@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Crufts Event History with London Map</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    /* General Styling */
+    body {
+      font-family: "Arial", sans-serif;
+      background-color: #f8f9fa;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+
+    /* Container Layout */
+    .container {
+      display: flex;
+      justify-content: space-around;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    /* Chart Box */
+    .chart-container {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+      width: 700px;
+    }
+
+    /* Tooltip */
+    #tooltip {
+      position: absolute;
+      background-color: white;
+      border: 1px solid black;
+      padding: 8px;
+      border-radius: 5px;
+      opacity: 0;
+      pointer-events: none;
+      font-size: 14px;
+      box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Legend Styling */
+    #legend {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-right: 15px;
+      background: white;
+      padding: 5px 10px;
+      border-radius: 5px;
+    }
+
+    .legend-box {
+      width: 20px;
+      height: 20px;
+      margin-right: 8px;
+      border-radius: 3px;
+    }
+
+    /* Map Container */
+    #map {
+      height: 500px;
+      width: 500px;
+      border-radius: 10px;
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2);
+      margin-top: 20px;
+    }
+
+    /* Timeline Container */
+    .timeline-container {
+      background: white;
+      padding: 10px;
+      border-radius: 10px;
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 2000px;
+      margin: 10px auto;
+      /* Centering */
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <!-- Chart Area -->
+    <div class="chart-container">
+      <h2>Crufts Dog Show Trends (2000-2024)</h2>
+      <div id="chart"></div>
+    </div>
+
+    <!-- Map Area -->
+    <div>
+      <h2>Venue Locations</h2>
+      <div id="map"></div>
+    </div>
+  </div>
+
+  <!-- Timeline Graph Container -->
+  <div class="timeline-container">
+    <h2>Milestone Timeline</h2>
+    <div id="timeline"></div>
+  </div>
+
+  <script>
+    // Predefined location coordinates (since CSV lacks lat/lng)
+    const locationCoordinates = {
+      "Westminister, London": { lat: 51.4975, lng: -0.1357 },
+      "Islington, London": { lat: 51.5362, lng: -0.1033 },
+      "Olympia, London": { lat: 51.4965, lng: -0.2099 },
+      "Kensington, London": { lat: 51.5007, lng: -0.1926 },
+      "Birmingham, London": { lat: 52.4862, lng: -1.8904 },
+    };
+
+    const locationColors = {
+      "Westminster, London": "#2E86C1", // Nice blue
+      "Islington, London": "#9B59B6", // Soft purple
+      "Olympia, London": "#E67E22", // Vibrant orange (Kept as is)
+      "Kensington, London": "#C0392B", // Deep red (More contrast)
+      "Birmingham, London": "#27AE60", // Fresh green
+    };
+
+    // Load CSV data
+    d3.csv("data.csv").then(function (data) {
+      // Parse CSV Data (Adjust column names based on CSV headers)
+      data.forEach((d) => {
+        d.year = +d.Year; // Convert year to number
+        d.participants =
+          d.No_of_Participants !== "N/A" ? +d.No_of_Participants : null; // Convert participants to number, default 0
+        d.location = d.Location; // Keep location as a string
+        d.description = d.Description || ""; // Milestones
+      });
+
+      // Dimensions for the chart
+      const margin = { top: 50, right: 50, bottom: 50, left: 80 };
+      const width = 600 - margin.left - margin.right;
+      const height = 500 - margin.top - margin.bottom;
+
+      // Create SVG Canvas
+      const svg = d3
+        .select("#chart")
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
+
+      // Scales
+      const xScale = d3
+        .scaleLinear()
+        .domain([d3.min(data, (d) => d.year), d3.max(data, (d) => d.year)])
+        .range([0, width]);
+
+      const yScale = d3
+        .scaleLinear()
+        .domain([0, d3.max(data, (d) => d.participants) + 1000])
+        .range([height, 0]);
+
+      // Axes
+      const xAxis = d3
+        .axisBottom(xScale)
+        .ticks(10)
+        .tickFormat(d3.format("d"));
+      const yAxis = d3.axisLeft(yScale);
+
+      svg.append("g").attr("transform", `translate(0,${height})`).call(xAxis);
+
+      svg.append("g").call(yAxis);
+
+      // X-axis label
+      svg.append("text")
+        .attr("transform", `translate(${width / 2}, ${height + margin.bottom - 10})`)
+        .style("text-anchor", "middle")
+        .style("font-size", "16px")
+        .style("font-weight", "bold")
+        .style("fill", "#333")
+        .text("Year");
+
+      // Y-axis label
+      svg.append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 0 - margin.left + 10)
+        .attr("x", 0 - height / 2)
+        .attr("dy", "1em")
+        .style("text-anchor", "middle")
+        .style("font-size", "16px")
+        .style("font-weight", "bold")
+        .style("fill", "#333")
+        .text("No_of_Participants");
+
+      // Add colored regions for different locations
+      const uniqueLocations = [
+        ...new Set(data.map((d) => d.location).filter((loc) => loc)),
+      ];
+
+      uniqueLocations.forEach((location) => {
+        const locationData = data.filter((d) => d.location === location);
+        if (locationData.length > 1) {
+          svg
+            .append("rect")
+            .attr("x", xScale(locationData[0].year))
+            .attr("y", height) // Start from bottom
+            .attr(
+              "width",
+              xScale(locationData[locationData.length - 1].year) -
+              xScale(locationData[0].year)
+            )
+            .attr("height", 0) // Start with height 0
+            .attr("fill", locationColors[location] || "#7F8C8D") // Default gray if missing
+            .attr("opacity", 0.3)
+            .on("mouseover", () => highlightLocationOnMap(location))
+            .on("mouseout", clearMapHighlight)
+            .transition() // Apply animation
+            .duration(1200) // 1.2 seconds animation
+            .ease(d3.easeCubicOut) // Smooth easing effect
+            .attr("y", 0) // Move to top
+            .attr("height", height); // Expand to full height
+        }
+      });
+
+      // Add dot plot for participants
+      const filteredData = data
+        .filter(
+          (d) => d.participants !== null && d.participants !== undefined
+        )
+        .sort((a, b) => a.year - b.year); // Ensure data is sorted by year
+
+      // Define the line generator
+      const line = d3
+        .line()
+        .x((d) => xScale(d.year))
+        .y((d) => yScale(d.participants))
+        .curve(d3.curveMonotoneX); // Smooth line
+
+      // Append the line path (initially invisible)
+      const path = svg
+        .append("path")
+        .datum(filteredData)
+        .attr("fill", "none")
+        .attr("stroke", "black")
+        .attr("stroke-width", 2)
+        .attr("d", line)
+        .attr("stroke-dasharray", function () {
+          return this.getTotalLength(); // Total length of the path
+        })
+        .attr("stroke-dashoffset", function () {
+          return this.getTotalLength(); // Hide initially
+        })
+        .transition() // Start animation
+        .duration(2000) // 2 seconds duration
+        .ease(d3.easeLinear) // Linear animation
+        .attr("stroke-dashoffset", 0); // Reveal the full path
+
+      // Add data points on the line (optional)
+      svg
+        .selectAll("circle")
+        .data(filteredData)
+        .enter()
+        .append("circle")
+        .attr("cx", (d) => xScale(d.year))
+        .attr("cy", (d) => yScale(d.participants))
+        .attr("r", 3)
+        .attr("fill", "red") // Change color as needed
+        .attr("opacity", 0.7)
+        .on("mouseover", (event, d) => {
+          d3.select("#tooltip")
+            .style("opacity", 1)
+            .html(
+              `<strong>Year:</strong> ${d.year} <br>
+                 <strong>Participants:</strong> ${d.participants} <br>
+                 <strong>Location:</strong> ${d.location || "N/A"}`
+            )
+            .style("left", `${event.pageX + 10}px`)
+            .style("top", `${event.pageY - 10}px`);
+        })
+        .on("mouseout", () => {
+          d3.select("#tooltip").style("opacity", 0);
+        });
+
+      // Leaflet Map Initialization
+      const map = L.map("map").setView([51.5074, -0.1278], 6); // UK Center
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+      }).addTo(map);
+
+      // Add markers to the map
+      const markers = {};
+      data.forEach((d) => {
+        if (d.location && locationCoordinates[d.location]) {
+          const coords = locationCoordinates[d.location];
+          const marker = L.marker([coords.lat, coords.lng]).bindPopup(
+            `<strong>${d.location}</strong>`
+          );
+          markers[d.location] = marker;
+        }
+      });
+
+      // Highlight location on hover
+      function highlightLocationOnMap(location) {
+        if (locationCoordinates[location]) {
+          const coords = locationCoordinates[location];
+          map.setView([coords.lat, coords.lng], 10);
+          markers[location].addTo(map).openPopup();
+        }
+      }
+
+      function clearMapHighlight() {
+        map.setView([51.5074, -0.1278], 6);
+        Object.values(markers).forEach((marker) => map.removeLayer(marker));
+      }
+
+      // Append a legend container
+      const legend = d3
+        .select("#chart")
+        .append("div")
+        .attr("id", "legend")
+        .style("display", "flex")
+        .style("flex-wrap", "wrap")
+        .style("margin-top", "20px");
+
+      uniqueLocations.forEach((location) => {
+        const color = locationColors[location] || "#7F8C8D"; // Default gray if location missing
+
+        const legendItem = legend.append("div").attr("class", "legend-item");
+
+        legendItem
+          .append("div")
+          .attr("class", "legend-box")
+          .style("background-color", color);
+
+        legendItem.append("span").style("font-size", "14px").text(location);
+      });
+
+      //  world war
+      const worldWarYears = [
+        { start: 1918, end: 1920 },
+        { start: 1940, end: 1947 },
+      ];
+      // Add shaded background for World War years
+      worldWarYears.forEach((period) => {
+        svg
+          .append("rect")
+          .attr("x", xScale(period.start))
+          .attr("y", 0)
+          .attr("width", xScale(period.end) - xScale(period.start))
+          .attr("height", height)
+          .attr("fill", "black")
+          .attr("opacity", 0.6);
+      });
+
+      const legendItemWW = legend.append("div").attr("class", "legend-item");
+
+      legendItemWW
+        .append("div")
+        .attr("class", "legend-box")
+        .style("background-color", "black");
+
+      legendItemWW
+        .append("span")
+        .style("font-size", "14px")
+        .style("color", "black")
+        .text("World War Years");
+
+      // Extract only milestone data (entries that have a description)
+      const milestoneData = data.filter(
+        (d) => d.Description && d.Description.trim() !== "N/A"
+      );
+      console.log(milestoneData);
+
+      // Set timeline dimensions
+      const timelineWidth = 1500;
+      const timelineHeight = 630;
+      const timelineMargin = { top: 20, right: 20, bottom: 20, left: 20 };
+
+      // Heights for milestone descriptions (cycling through 5 different levels)
+      const labelHeights = [50, 100, 150, 200, 250]; // 5 height levels
+      let heightIndex = 0; // To cycle through heights
+
+      // Evenly distribute years instead of using actual scale
+      const evenlySpacedScale = d3
+        .scalePoint()
+        .domain(milestoneData.map((d) => d.year)) // Use only milestone years
+        .range([
+          0,
+          timelineWidth - timelineMargin.left - timelineMargin.right,
+        ])
+        .padding(3); // Adds spacing
+
+      // Create SVG for the timeline
+      const timelineSvg = d3
+        .select("#timeline")
+        .append("svg")
+        .attr("width", timelineWidth)
+        .attr("height", timelineHeight)
+        .append("g")
+        .attr(
+          "transform",
+          `translate(${timelineMargin.left}, ${timelineMargin.top})`
+        );
+
+      // Add horizontal timeline line
+      timelineSvg
+        .append("line")
+        .attr("x1", 0)
+        .attr("y1", timelineHeight / 2)
+        .attr(
+          "x2",
+          timelineWidth - timelineMargin.left - timelineMargin.right
+        )
+        .attr("y2", timelineHeight / 2)
+        .attr("stroke", "#2c3e50")
+        .attr("stroke-width", 2);
+
+      // Add milestone dots with animation
+      timelineSvg
+        .selectAll("circle")
+        .data(milestoneData)
+        .enter()
+        .append("circle")
+        .attr("cx", (d) => evenlySpacedScale(d.year))
+        .attr("cy", timelineHeight / 2)
+        .attr("r", 0) // Start with radius 0 for animation
+        .attr("fill", "#e74c3c") // Red dots for milestones
+        .transition()
+        .duration(1000) // 1-second animation
+        .attr("r", 6);
+
+      // Add milestone labels with dotted lines (alternating up and down)
+      timelineSvg
+        .selectAll(".milestone-group")
+        .data(milestoneData)
+        .enter()
+        .append("g")
+        .each(function (d, i) {
+          const heightOffset = labelHeights[i % 5]; // Cycle through 5 heights
+          const isAbove = i % 2 === 0; // Alternate above & below
+          const yPos =
+            timelineHeight / 2 + (isAbove ? -heightOffset - 45 : heightOffset + 5);
+          const xPos = evenlySpacedScale(d.year);
+
+          // Dotted Line
+          d3.select(this)
+            .append("line")
+            .attr("x1", xPos)
+            .attr("y1", timelineHeight / 2)
+            .attr("x2", xPos)
+            .attr("y2", yPos)
+            .attr("stroke", "#e74c3c")
+            .attr("stroke-width", 1.5)
+            .attr("stroke-dasharray", "4 4");
+
+          // Milestone Box
+          d3.select(this)
+            .append("foreignObject")
+            .attr("x", xPos - 75) // Center the box
+            .attr("y", yPos - (isAbove ? 40 : 0)) // Adjust for box size
+            .attr("width", 150)
+            .attr("height", 60)
+            .append("xhtml:div")
+            .attr("class", "milestone-box")
+            .html(`<strong>${d.year}</strong><br>${d.description}`);
+        });
+
+
+      // Add CSS styles for shadow boxes
+      d3.select("head").append("style").html(`
+    .milestone-box {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2);
+        padding: 1px;
+        font-size: 10px;
+        text-align: center;
+        border: 1px solid #e74c3c;
+    }
+`);
+    });
+  </script>
+
+  <!-- Tooltip -->
+  <div id="tooltip" style="
+        position: absolute;
+        background-color: white;
+        border: 1px solid black;
+        padding: 5px;
+        border-radius: 5px;
+        opacity: 0;
+        pointer-events: none;
+      "></div>
+</body>
+
+</html>

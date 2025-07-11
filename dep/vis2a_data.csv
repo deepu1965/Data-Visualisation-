@@ -1,0 +1,36 @@
+group,breed,points
+Gundog,Retriever (Flat Coated),16
+Gundog,Irish Setter,12
+Gundog,Spaniel (American Cocker),10
+Gundog,Lagotto Romagnolo,9
+Gundog,Gordon Setter,8
+Hound,Whippet,21
+Hound,Irish Wolfhound,13
+Hound,Basset Griffon Vendeen (Grand),12
+Hound,Dachshund (Wire-Haired),9
+Hound,Rhodesian Ridgeback,8
+Pastoral,Border Collie,17
+Pastoral,Old English Sheepdog,14
+Pastoral,Samoyed,13
+Pastoral,Pyrenean Mountain Dog,9
+Pastoral,Australian Shepherd,8
+Terrier,Scottish Terrier,14
+Terrier,Jack Russell Terrier,13
+Terrier,Fox Terrier (Wire),11
+Terrier,Irish Terrier,11
+Terrier,Lakeland Terrier,10
+Toy,Pomeranian,15
+Toy,Yorkshire Terrier,15
+Toy,Papillon,13
+Toy,Chihuahua (Long Coat),10
+Toy,Bichon Frise,9
+Utility,Poodle (Standard),16
+Utility,Poodle (Miniature),15
+Utility,Akita,13
+Utility,Poodle (Toy),10
+Utility,Japanese Shiba Inu,7
+Working,Alaskan Malamute,13
+Working,Newfoundland,13
+Working,Dobermann,10
+Working,Leonberger,10
+Working,Bullmastiff,9

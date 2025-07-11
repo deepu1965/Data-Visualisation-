@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Crufts Group Performance</title>
+        <script src="https://d3js.org/d3.v7.min.js"></script>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                text-align: center;
+                background-color: white;
+                margin: 0;
+                padding: 20px;
+            }
+
+            .loading {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 70vh;
+                flex-direction: column;
+            }
+
+            .spinner {
+                border: 4px solid #f3f3f3;
+                border-top: 4px solid #3498db;
+                border-radius: 50%;
+                width: 50px;
+                height: 50px;
+                animation: spin 1s linear infinite;
+                margin-bottom: 20px;
+            }
+
+            @keyframes spin {
+                0% {
+                    transform: rotate(0deg);
+                }
+
+                100% {
+                    transform: rotate(360deg);
+                }
+            }
+
+            svg {
+                margin-top: 20px;
+            }
+
+            .bar {
+                fill: goldenrod;
+                transition: opacity 0.3s;
+            }
+
+            .bar:hover {
+                opacity: 0.8;
+            }
+
+            .bar2 {
+                fill: gray;
+                transition: opacity 0.3s;
+            }
+
+            .bar2:hover {
+                opacity: 0.8;
+            }
+
+            .axis-label {
+                font-size: 14px;
+                font-weight: bold;
+            }
+
+            .error {
+                color: #e74c3c;
+                font-size: 16px;
+                margin-top: 50px;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div id="content">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Loading group performance data...</p>
+            </div>
+        </div>
+
+        <script>
+            // Global variables
+            let data = [];
+
+            // Load and process data
+            async function loadData() {
+                try {
+                    const csvData = await d3.csv("vis2b_data.csv");
+
+                    // Process data
+                    data = csvData.map(d => ({
+                        group: d.group,
+                        bis: +d.bis,
+                        rbis: +d.rbis
+                    }));
+
+                    hideLoading();
+                    initializeVisualization();
+                } catch (error) {
+                    console.error("Error loading data:", error);
+                    showError();
+                }
+            }
+
+            function hideLoading() {
+                document.getElementById('content').innerHTML = `
+                <h1>Group Performance at Crufts (20 Year Analysis)</h1>
+                <svg width="700" height="450"></svg>
+            `;
+            }
+
+            function showError() {
+                document.getElementById('content').innerHTML = `
+                <div class="error">
+                    <h3>Error Loading Data</h3>
+                    <p>Please check if the data file exists and is properly formatted.</p>
+                </div>
+            `;
+            }
+
+            function initializeVisualization() {
+                const svg = d3.select("svg"),
+                    margin = { top: 40, right: 30, bottom: 80, left: 50 },
+                    width = +svg.attr("width") - margin.left - margin.right,
+                    height = +svg.attr("height") - margin.top - margin.bottom,
+                    g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+                const x0 = d3.scaleBand()
+                    .domain(data.map(d => d.group))
+                    .rangeRound([0, width])
+                    .padding(0.2);
+
+                const x1 = d3.scaleBand()
+                    .domain(["bis", "rbis"])
+                    .rangeRound([0, x0.bandwidth()])
+                    .padding(0.05);
+
+                const y = d3.scaleLinear()
+                    .domain([0, d3.max(data, d => Math.max(d.bis, d.rbis))])
+                    .nice()
+                    .range([height, 0]);
+
+                // Add tooltip
+                const tooltip = d3.select("body").append("div")
+                    .attr("class", "tooltip")
+                    .style("position", "absolute")
+                    .style("background", "rgba(0, 0, 0, 0.8)")
+                    .style("color", "white")
+                    .style("padding", "10px")
+                    .style("border-radius", "5px")
+                    .style("pointer-events", "none")
+                    .style("opacity", 0);
+
+                // Create bars
+                g.append("g")
+                    .selectAll("g")
+                    .data(data)
+                    .enter().append("g")
+                    .attr("transform", d => `translate(${x0(d.group)},0)`)
+                    .selectAll("rect")
+                    .data(d => [
+                        { key: "bis", value: d.bis, class: "bar", label: "Best in Show" },
+                        { key: "rbis", value: d.rbis, class: "bar2", label: "Reserve Best in Show" }
+                    ])
+                    .enter().append("rect")
+                    .attr("class", d => d.class)
+                    .attr("x", d => x1(d.key))
+                    .attr("width", x1.bandwidth())
+                    .attr("y", height)
+                    .attr("height", 0)
+                    .on("mouseover", function (event, d) {
+                        tooltip.transition()
+                            .duration(200)
+                            .style("opacity", 1);
+                        tooltip.html(`${d.label}: ${d.value}`)
+                            .style("left", (event.pageX + 10) + "px")
+                            .style("top", (event.pageY - 28) + "px");
+                    })
+                    .on("mouseout", function () {
+                        tooltip.transition()
+                            .duration(500)
+                            .style("opacity", 0);
+                    })
+                    .transition()
+                    .duration(1000)
+                    .attr("y", d => y(d.value))
+                    .attr("height", d => height - y(d.value));
+
+                // Add x-axis
+                g.append("g")
+                    .attr("class", "axis")
+                    .attr("transform", `translate(0,${height})`)
+                    .call(d3.axisBottom(x0))
+                    .selectAll("text")
+                    .style("text-anchor", "end")
+                    .attr("dx", "-0.8em")
+                    .attr("dy", "0.15em")
+                    .attr("transform", "rotate(-25)");
+
+                // Add y-axis
+                g.append("g")
+                    .attr("class", "axis")
+                    .call(d3.axisLeft(y).ticks(8));
+
+                // Add x-axis label
+                svg.append("text")
+                    .attr("x", width / 2 + margin.left)
+                    .attr("y", height + margin.top + 40)
+                    .attr("text-anchor", "middle")
+                    .attr("class", "axis-label")
+                    .text("Groups");
+
+                // Add y-axis label
+                svg.append("text")
+                    .attr("transform", "rotate(-90)")
+                    .attr("x", -height / 2 - margin.top)
+                    .attr("y", margin.left / 2)
+                    .attr("text-anchor", "middle")
+                    .attr("class", "axis-label")
+                    .text("Number of Awards");
+
+                // Add legend
+                const legend = svg.append("g")
+                    .attr("transform", `translate(${width - 200},30)`);
+
+                legend.append("rect")
+                    .attr("x", 0)
+                    .attr("y", 0)
+                    .attr("width", 15)
+                    .attr("height", 15)
+                    .attr("fill", "goldenrod");
+
+                legend.append("text")
+                    .attr("x", 20)
+                    .attr("y", 12)
+                    .text("Best in Show")
+                    .style("font-size", "14px");
+
+                legend.append("rect")
+                    .attr("x", 0)
+                    .attr("y", 20)
+                    .attr("width", 15)
+                    .attr("height", 15)
+                    .attr("fill", "gray");
+
+                legend.append("text")
+                    .attr("x", 20)
+                    .attr("y", 32)
+                    .text("Reserve Best in Show")
+                    .style("font-size", "14px");
+            }
+
+            // Load data when page loads
+            document.addEventListener("DOMContentLoaded", loadData);
+        </script>
+    </body>
+
+</html>

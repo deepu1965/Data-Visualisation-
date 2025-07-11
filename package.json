@@ -1,0 +1,49 @@
+{
+  "name": "visualization-showcase",
+  "version": "2.0.0",
+  "description": "A comprehensive data visualization project showcasing interactive charts and graphs built with D3.js v7, analyzing Crufts Dog Show participation data and historical trends.",
+  "main": "dep/index.html",
+  "scripts": {
+    "start": "python -m http.server 8000",
+    "serve": "python -m http.server 8000",
+    "dev": "npx http-server dep/ -p 8000 -o",
+    "build": "echo 'Static site - no build process required'",
+    "lint": "echo 'Linting HTML, CSS, and JavaScript files'",
+    "test": "echo 'Running tests for visualizations'"
+  },
+  "keywords": [
+    "d3js",
+    "data-visualization",
+    "crufts",
+    "dog-show",
+    "interactive-charts",
+    "javascript",
+    "responsive-design",
+    "data-analysis"
+  ],
+  "author": "Visualization Showcase Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/visualization-showcase.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/visualization-showcase/issues"
+  },
+  "homepage": "https://github.com/your-username/visualization-showcase#readme",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  },
+  "dependencies": {
+    "d3": "^7.8.5"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "browserslist": [
+    "last 2 Chrome versions",
+    "last 2 Firefox versions",
+    "last 2 Safari versions",
+    "last 2 Edge versions"
+  ]
+}
